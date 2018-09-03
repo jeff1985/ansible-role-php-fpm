@@ -1,0 +1,137 @@
+---
+
+- name: ASSERT | Check variables
+  assert:
+    that: "php_version in php_managed_versions"
+  tags:
+    - php
+    - phpini
+
+- name: INCLUDE_VARS | Related to PHP version
+  include_vars: "php-{{ php_version }}.yml"
+  tags:
+    - php
+    - phpini
+
+- name: Install PHP-FPM
+  action: apt name={{ item }} state=installed    
+  with_items: "{{ php_packages }}"
+  tags:
+    - php
+
+- name: Configure PHP
+  template: src=etc/__php__/php.ini.j2 dest='{{ php_etc_dir }}/fpm/php.ini'
+  notify:
+    - Restart PHP-FPM
+  tags:
+    - php
+    - phpini
+
+- name: Configure PHP CLI
+  template: src=etc/__php__/php.ini.j2 dest='{{ php_etc_dir }}/cli/php.ini'
+  tags:
+    - php
+    - phpini
+
+#- name: upgrade pear
+#  command: pear upgrade-all
+#  register: pear_upgrade_result
+#  changed_when: "'upgrade-all ok' in pear_upgrade_result.stdout"
+#  failed_when: "'upgrade-all failed' in pear_upgrade_result.stdout"
+  
+#- name: Install PEAR channels
+#  command: pear channel-discover {{ item }}
+#  with_items:
+#    #- pear.symfony.com
+#    #- guzzlephp.org/pear
+#    #- pear.amazonwebservices.com
+#    #- pear.symfony-project.com
+#    - htmlpurifier.org
+#    #- pear.symfony.com
+#  register: pear_channel_result
+#  changed_when: "'initialized' not in pear_channel_result.stdout"
+#  failed_when: "'failed' in pear_channel_result.stdout"
+
+#- command: pear update-channels
+#  register: pear_update_result
+#  changed_when: "'succeeded' in pear_update_result.stdout"
+#  failed_when: "'Cannot retrieve' in pear_update_result.stdout"
+
+- name: install awscli
+  pip: name=awscli
+
+#- name: Install PEAR packages
+#  command: pear install "{{ item }}"
+#  with_items:
+#    #- Validate_Finance-alpha
+#    - I18Nv2-beta
+#    - Net_URL
+#    - HTTP_Request
+#    - HTTP_Request2
+#    - HTTP_Client
+#    - NET_IDNA-beta
+#    - Console_ProgressBar-beta
+   # - hp/HTMLPurifier
+   # - pear.symfony.com/Yaml
+    #- pear.amazonwebservices.com/sdk
+#  register: pear_package_result
+#  changed_when: "'is already installed' not in pear_package_result.stdout"
+#  failed_when:  "'No releases available for package' in pear_package_result.stdout"
+#- name: Uninstall old PEAR packages
+#  command: pear uninstall "{{ item }}"
+#  with_items:
+#    - pear.symfony.com/Yaml
+#    - Validate_Finance-alpha
+- name: Configure PHP-FPM
+  template: src=www.conf.j2 dest='{{ php_etc_dir }}/fpm/pool.d/www.conf'
+  notify:
+    - Restart PHP-FPM
+
+- name: Configure PHP-APC
+  copy: src=etc/__php__/mods-available/apc.ini dest='{{ php_mods_dir }}/apc.ini' owner=root group=root mode=0644
+  when: php_version | version_compare('5.3', '==')
+  notify:
+    - Restart PHP-FPM
+
+- name: APT | Install Opcache
+  apt: pkg="{{ php_apt_prefix }}opcache" state=present
+  when: php_version | version_compare('7.0', 'ge')
+
+- name: TEMPLATE | Configure Opcache
+  template: >
+    src=etc/__php__/mods-available/opcache.ini.j2
+    dest="{{ php_mods_dir }}/opcache.ini"
+  when: php_version | version_compare('7.0', 'ge')
+  notify: restart php-fpm
+
+
+- name: APT | Install APCu
+  apt: pkg="php-apcu" state=present
+  when: php_version | version_compare('7.0', 'ge')
+
+- name: TEMPLATE | Configure APCu
+  template: >
+    src=etc/__php__/mods-available/apcu.ini.j2
+    dest={{ php_mods_dir }}/apcu.ini
+  when: php_version | version_compare('7.0', 'ge')
+  notify: restart php-fpm
+
+- stat:
+    path: '/etc/php/7.0/cli/conf.d/05-opcache.ini'
+  register: opcache_confd
+
+- name: ensure there is only one opcache module enabled
+  file:
+    state: absent
+    path: '/etc/php/7.0/cli/conf.d/10-opcache.ini'
+  when: opcache_confd.stat.exists is defined
+
+- stat:
+    path: '/etc/php/7.0/fpm/conf.d/05-opcache.ini'
+  register: opcache_fpm
+
+- name: ensure there is only one opcache module enabled (fpm)
+  file:
+    state: absent
+    path: '/etc/php/7.0/fpm/conf.d/10-opcache.ini'
+  when: opcache_fpm.stat.exists is defined

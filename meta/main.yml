@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: Evgeny Anisiforov
+  description: An Ansible role for installing the PHP FastCGI process manager (FPM).
+  company: TurboAd GmbH
+  license: Apache
+  min_ansible_version: 1.2
+  platforms:
+  - name: Ubuntu
+    versions:
+    - trusty
+  categories:
+  - web
+dependencies: []

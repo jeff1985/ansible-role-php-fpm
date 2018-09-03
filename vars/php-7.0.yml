@@ -1,0 +1,29 @@
+---
+
+php_apt_prefix: 'php-'
+php_etc_dir: '/etc/php/7.0'
+php_fpm_service: 'php7.0-fpm'
+php_default_fpm_sock: '/var/run/php/php7.0-fpm.sock'
+php_mods_dir: '/etc/php/7.0/mods-available'
+php_mysql_package: 'php7.0-mysql'
+php_imagick_package: 'php-imagick'
+
+
+php_packages:
+  - '{{ php_apt_prefix }}fpm'
+  - '{{ php_apt_prefix }}curl'
+  - '{{ php_apt_prefix }}intl'
+  - '{{ php_mysql_package }}'
+  - '{{ php_imagick_package }}' # '{{ php_apt_prefix }}imagick'  #need php5-imagemagick for 5.3, but php-imagick for php7
+  - '{{ php_apt_prefix }}imap'
+  - '{{ php_apt_prefix }}mcrypt'
+  - 'php-pear'
+  - '{{ php_apt_prefix }}gd'
+  - '{{ php_apt_prefix }}memcache' #need php5-memcache for 5.3
+  - python-pip
+  - 'php7.0-mbstring' # {{ php_apt_prefix }}mbstring    for php5: php5-mbstring libapache2-mod-php5
+  - 'php-apcu'   # need for php 5.3 install!
+  - 'php-soap'
+  - 'php-bcmath'
+  - 'php7.0-zip'
+  - 'php-memcached'
